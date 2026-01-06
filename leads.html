@@ -141,10 +141,10 @@
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">Source</label>
-                            <select id="lead-source" class="form-select">
+                            <label class="form-label">Source *</label>
+                            <select id="lead-source" class="form-select" required>
                                 <option value="">Select source</option>
-                                <option value="Facebook">Facebook</option>
+                                <option value="Facebook" selected>Facebook</option>
                                 <option value="Instagram">Instagram</option>
                                 <option value="WhatsApp">WhatsApp</option>
                                 <option value="Website">Website</option>
@@ -404,6 +404,12 @@
             // Validation
             if (!leadData.name || !leadData.phone) {
                 App.showToast('Name and Phone are required', 'error');
+                return;
+            }
+
+            // Validate source is selected
+            if (!leadData.source) {
+                App.showToast('Please select a Source', 'error');
                 return;
             }
 
