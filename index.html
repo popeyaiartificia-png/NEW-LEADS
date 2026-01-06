@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Lead Management System</title>
+    <meta name="description" content="Lead Management Dashboard - Track leads, follow-ups, and reminders">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">📊</div>
+                <span class="logo-text">LeadsPro</span>
+            </div>
+            <nav>
+                <ul class="nav-menu">
+                    <li class="nav-item">
+                        <a href="index.html" class="nav-link active">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="leads.html" class="nav-link">
+                            <span class="nav-icon">👥</span>
+                            <span class="nav-text">Leads</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="followups.html" class="nav-link">
+                            <span class="nav-icon">📅</span>
+                            <span class="nav-text">Follow-ups</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Page Header -->
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Dashboard</h1>
+                    <p id="current-date" class="current-date"></p>
+                </div>
+                <button class="btn btn-primary" onclick="window.location.href='leads.html'">
+                    <span>+</span> Add Lead
+                </button>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon primary">👥</div>
+                    <div>
+                        <div id="stat-total-leads" class="stat-value">0</div>
+                        <div class="stat-label">Total Leads</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warning">📅</div>
+                    <div>
+                        <div id="stat-today-followups" class="stat-value">0</div>
+                        <div class="stat-label">Today's Follow-ups</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success">⏳</div>
+                    <div>
+                        <div id="stat-pending" class="stat-value">0</div>
+                        <div class="stat-label">Pending Follow-ups</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon danger">🔥</div>
+                    <div>
+                        <div id="stat-high-priority" class="stat-value">0</div>
+                        <div class="stat-label">High Priority</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Today's Reminders -->
+            <div class="card mb-lg">
+                <div class="card-header">
+                    <h2 class="card-title">🔔 Today's Reminders</h2>
+                    <a href="followups.html" class="btn btn-secondary btn-sm">View All</a>
+                </div>
+                <div id="todays-reminders" class="followup-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">✨</div>
+                        <p>No reminders for today!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Follow-ups (Next 7 Days) -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📆 Upcoming Follow-ups (Next 7 Days)</h2>
+                    <a href="followups.html" class="btn btn-secondary btn-sm">Manage</a>
+                </div>
+                <div id="upcoming-followups" class="followup-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>No upcoming follow-ups scheduled</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Section -->
+            <div class="card mt-lg" id="overdue-section" style="display: none;">
+                <div class="card-header">
+                    <h2 class="card-title" style="color: var(--priority-high);">⚠️ Overdue Follow-ups</h2>
+                </div>
+                <div id="overdue-followups" class="followup-list"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/leads.js"></script>
+    <script src="js/followups.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Dashboard specific logic
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadDashboardData();
+        });
+
+        async function loadDashboardData() {
+            // Load stats
+            await loadStats();
+            
+            // Load today's reminders
+            await loadTodaysReminders();
+            
+            // Load upcoming followups
+            await loadUpcomingFollowups();
+            
+            // Load overdue
+            await loadOverdueFollowups();
+        }
+
+        async function loadStats() {
+            // Get lead counts
+            const { data: leadCounts } = await LeadsModule.getCountsByStatus();
+            document.getElementById('stat-total-leads').textContent = leadCounts.total || 0;
+            
+            // Get followup stats
+            const { data: followupStats } = await FollowupsModule.getStats();
+            document.getElementById('stat-today-followups').textContent = followupStats.todayCount || 0;
+            document.getElementById('stat-pending').textContent = followupStats.pending || 0;
+            document.getElementById('stat-high-priority').textContent = followupStats.highPriority || 0;
+        }
+
+        async function loadTodaysReminders() {
+            const { data: reminders, error } = await FollowupsModule.getTodaysReminders();
+            const container = document.getElementById('todays-reminders');
+            
+            if (error || !reminders || reminders.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">✨</div>
+                        <p>No reminders for today!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = reminders.map(f => renderFollowupItem(f)).join('');
+        }
+
+        async function loadUpcomingFollowups() {
+            const { data: upcoming, error } = await FollowupsModule.getUpcoming(7);
+            const container = document.getElementById('upcoming-followups');
+            
+            // Filter out today's followups (already shown in reminders)
+            const today = new Date().toISOString().split('T')[0];
+            const filtered = (upcoming || []).filter(f => f.followup_date.split('T')[0] !== today);
+            
+            if (error || filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <p>No upcoming follow-ups scheduled</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(f => renderFollowupItem(f)).join('');
+        }
+
+        async function loadOverdueFollowups() {
+            const { data: overdue, error } = await FollowupsModule.getOverdue();
+            const section = document.getElementById('overdue-section');
+            const container = document.getElementById('overdue-followups');
+            
+            if (error || !overdue || overdue.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            
+            section.style.display = 'block';
+            container.innerHTML = overdue.map(f => renderFollowupItem(f, true)).join('');
+        }
+
+        function renderFollowupItem(followup, isOverdue = false) {
+            const leadName = followup.leads ? followup.leads.name : 'Unknown Lead';
+            const priority = (followup.priority || 'Medium').toLowerCase();
+            const relativeTime = App.getRelativeTime(followup.followup_date);
+            const formattedDate = App.formatDate(followup.followup_date);
+            const formattedTime = followup.followup_time ? App.formatTime(followup.followup_time) : '';
+            
+            return `
+                <div class="followup-item ${priority}">
+                    <div class="followup-time">
+                        <div class="followup-time-value">${relativeTime}</div>
+                        <div class="followup-time-label">${formattedDate}</div>
+                    </div>
+                    <div class="followup-info">
+                        <div class="followup-lead">${leadName}</div>
+                        <div class="followup-desc">${followup.description || 'Follow-up scheduled'}</div>
+                        ${formattedTime ? `<div class="followup-desc">🕐 ${formattedTime}</div>` : ''}
+                    </div>
+                    ${App.getPriorityBadge(followup.priority)}
+                    <div class="followup-actions">
+                        <button class="btn btn-secondary btn-icon" onclick="markComplete('${followup.id}')" title="Mark Complete">✓</button>
+                        <a href="followups.html?edit=${followup.id}" class="btn btn-secondary btn-icon" title="Edit">✎</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function markComplete(id) {
+            const { error } = await FollowupsModule.markComplete(id);
+            if (error) {
+                App.showToast('Failed to complete follow-up', 'error');
+                return;
+            }
+            App.showToast('Follow-up marked as complete!', 'success');
+            await loadDashboardData();
+        }
+    </script>
+</body>
+</html>
