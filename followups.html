@@ -152,10 +152,18 @@
                     <input type="hidden" id="followup-id">
 
                     <div class="form-group">
+                        <label class="form-label">Search Lead by Phone *</label>
+                        <input type="text" id="lead-search" class="form-input"
+                            placeholder="Type phone number to search..." oninput="filterLeadsByPhone(this.value)">
+                    </div>
+
+                    <div class="form-group">
                         <label class="form-label">Select Lead *</label>
                         <select id="followup-lead" class="form-select" required>
                             <option value="">Select a lead...</option>
                         </select>
+                        <small class="text-muted" style="font-size: 0.75rem; margin-top: 4px; display: block;">Leads
+                            sorted by phone number</small>
                     </div>
 
                     <div class="form-row">
@@ -249,17 +257,43 @@
             }
         }
 
-        // Populate lead select dropdown
-        function populateLeadSelect() {
+        // Populate lead select dropdown (sorted by phone number)
+        function populateLeadSelect(filterQuery = '') {
             const select = document.getElementById('followup-lead');
             select.innerHTML = '<option value="">Select a lead...</option>';
 
-            allLeads.forEach(lead => {
+            // Sort leads by phone number (primary key)
+            let sortedLeads = [...allLeads].sort((a, b) => {
+                const phoneA = (a.phone || '').replace(/\D/g, '');
+                const phoneB = (b.phone || '').replace(/\D/g, '');
+                return phoneA.localeCompare(phoneB);
+            });
+
+            // Filter by phone number if search query provided
+            if (filterQuery.trim()) {
+                const query = filterQuery.replace(/\D/g, '').toLowerCase();
+                sortedLeads = sortedLeads.filter(lead => {
+                    const phone = (lead.phone || '').replace(/\D/g, '');
+                    return phone.includes(query);
+                });
+            }
+
+            sortedLeads.forEach(lead => {
                 const option = document.createElement('option');
                 option.value = lead.id;
-                option.textContent = `${lead.name}${lead.phone ? ' (' + lead.phone + ')' : ''}`;
+                option.textContent = `📞 ${lead.phone || 'No phone'} - ${lead.name}`;
                 select.appendChild(option);
             });
+
+            // Auto-select if only one match
+            if (sortedLeads.length === 1) {
+                select.value = sortedLeads[0].id;
+            }
+        }
+
+        // Filter leads by phone number in dropdown
+        function filterLeadsByPhone(query) {
+            populateLeadSelect(query);
         }
 
         // Load all followups
@@ -416,6 +450,10 @@
             document.getElementById('modal-title').textContent = 'Add Follow-up';
             document.getElementById('followup-form').reset();
             document.getElementById('followup-id').value = '';
+            document.getElementById('lead-search').value = '';
+
+            // Repopulate leads sorted by phone
+            populateLeadSelect();
 
             // Set default date to tomorrow
             const tomorrow = new Date();
