@@ -467,6 +467,7 @@
 
         // State
         let allLeads = [];
+        let cachedReminders = []; // Cache reminders to avoid duplicate API calls
         let currentStatus = 'all';
         let dateFrom = null;
         let dateTo = null;
@@ -644,32 +645,26 @@
             handleFilter();
         }
 
-        // Load all leads
+        // Load all leads - OPTIMIZED: parallel API calls + caching
         async function loadLeads() {
-            const { data, error } = await LeadsModule.fetchAll();
+            // Fetch leads and reminders in parallel (2 calls instead of 4)
+            const [leadsResult, remindersResult] = await Promise.all([
+                LeadsModule.fetchAll(),
+                FollowupsModule.getAllReminders(7)
+            ]);
 
-            if (error) {
+            if (leadsResult.error) {
                 App.showToast('Failed to load leads', 'error');
                 return;
             }
 
-            allLeads = data;
-            await syncReminderCount();
+            allLeads = leadsResult.data;
+            cachedReminders = remindersResult.data || [];
+            window.reminderCount = cachedReminders.length;
+
             renderStatusStats();
             renderStatusTabs();
             handleFilter();
-        }
-
-        // Synchronize reminder count across all tabs
-        async function syncReminderCount() {
-            const { data: reminders } = await FollowupsModule.getTodaysReminders();
-            const { data: overdue } = await FollowupsModule.getOverdue();
-            const { data: upcoming } = await FollowupsModule.getUpcoming(7);
-
-            // Combine all pending/relevant followups
-            const combined = [...overdue, ...reminders, ...upcoming];
-            // Remove duplicates if any (by id)
-            window.reminderCount = Array.from(new Map(combined.map(f => [f.id, f])).values()).length;
         }
 
         // Render status stats cards
@@ -729,20 +724,12 @@
             handleFilter();
         }
 
-        // Handle filtering
-        async function handleFilter() {
+        // Handle filtering - OPTIMIZED: uses cached reminders
+        function handleFilter() {
             // Filter by status
             if (currentStatus === 'Reminders') {
-                const { data: reminders } = await FollowupsModule.getTodaysReminders();
-                const { data: overdue } = await FollowupsModule.getOverdue();
-                const { data: upcoming } = await FollowupsModule.getUpcoming(7);
-
-                // Combine and deduplicate
-                const combined = [...overdue, ...reminders, ...upcoming];
-                const unique = Array.from(new Map(combined.map(f => [f.id, f])).values());
-
-                window.reminderCount = unique.length;
-                renderFollowupTable(unique);
+                // Use cached reminders instead of making API calls
+                renderFollowupTable(cachedReminders);
                 return;
             }
 

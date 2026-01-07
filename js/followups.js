@@ -220,6 +220,50 @@ const FollowupsModule = {
         return { data: data || [], error };
     },
 
+    // Get ALL active reminders in a single API call (overdue + today + upcoming)
+    // This replaces multiple calls to getTodaysReminders, getOverdue, and getUpcoming
+    async getAllReminders(upcomingDays = 7) {
+        const supabase = window.SupabaseConfig.getClient();
+        if (!supabase) return { data: [], error: 'Supabase not initialized' };
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStr = today.toISOString().split('T')[0];
+
+        const futureDate = new Date(today);
+        futureDate.setDate(futureDate.getDate() + upcomingDays);
+        const futureStr = futureDate.toISOString().split('T')[0];
+
+        // Single query: get all pending followups up to the upcoming date
+        const { data, error } = await supabase
+            .from('followups')
+            .select(`
+                *,
+                leads (id, name, email, phone, status, source)
+            `)
+            .eq('status', 'Pending')
+            .lte('followup_date', futureStr)
+            .order('followup_date', { ascending: true });
+
+        if (error) return { data: [], error };
+
+        // Filter client-side for reminders (including reminder_days logic)
+        const reminders = (data || []).filter(f => {
+            const followupDate = new Date(f.followup_date);
+            followupDate.setHours(0, 0, 0, 0);
+            const reminderDays = f.reminder_days || 0;
+
+            // Calculate reminder date
+            const reminderDate = new Date(followupDate);
+            reminderDate.setDate(reminderDate.getDate() - reminderDays);
+
+            // Include if: overdue, or today >= reminder date
+            return today >= reminderDate;
+        });
+
+        return { data: reminders, error: null };
+    },
+
     // Get stats for dashboard
     async getStats() {
         const supabase = window.SupabaseConfig.getClient();
