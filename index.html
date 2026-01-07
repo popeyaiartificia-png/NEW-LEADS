@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,13 +9,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <div class="logo-icon">📊</div>
-                <span class="logo-text">LeadsPro</span>
+                <img src="Artificia-ai_logo.png" alt="Artificia" style="height: 40px; width: auto;">
             </div>
             <nav>
                 <ul class="nav-menu">
@@ -32,8 +33,8 @@
                     </li>
                     <li class="nav-item">
                         <a href="followups.html" class="nav-link">
-                            <span class="nav-icon">📅</span>
-                            <span class="nav-text">Follow-ups</span>
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Lead Pipeline</span>
                         </a>
                     </li>
                 </ul>
@@ -141,13 +142,13 @@
         async function loadDashboardData() {
             // Load stats
             await loadStats();
-            
+
             // Load today's reminders
             await loadTodaysReminders();
-            
+
             // Load upcoming followups
             await loadUpcomingFollowups();
-            
+
             // Load overdue
             await loadOverdueFollowups();
         }
@@ -156,7 +157,7 @@
             // Get lead counts
             const { data: leadCounts } = await LeadsModule.getCountsByStatus();
             document.getElementById('stat-total-leads').textContent = leadCounts.total || 0;
-            
+
             // Get followup stats
             const { data: followupStats } = await FollowupsModule.getStats();
             document.getElementById('stat-today-followups').textContent = followupStats.todayCount || 0;
@@ -167,7 +168,7 @@
         async function loadTodaysReminders() {
             const { data: reminders, error } = await FollowupsModule.getTodaysReminders();
             const container = document.getElementById('todays-reminders');
-            
+
             if (error || !reminders || reminders.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -177,18 +178,18 @@
                 `;
                 return;
             }
-            
+
             container.innerHTML = reminders.map(f => renderFollowupItem(f)).join('');
         }
 
         async function loadUpcomingFollowups() {
             const { data: upcoming, error } = await FollowupsModule.getUpcoming(7);
             const container = document.getElementById('upcoming-followups');
-            
+
             // Filter out today's followups (already shown in reminders)
             const today = new Date().toISOString().split('T')[0];
             const filtered = (upcoming || []).filter(f => f.followup_date.split('T')[0] !== today);
-            
+
             if (error || filtered.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -198,7 +199,7 @@
                 `;
                 return;
             }
-            
+
             container.innerHTML = filtered.map(f => renderFollowupItem(f)).join('');
         }
 
@@ -206,12 +207,12 @@
             const { data: overdue, error } = await FollowupsModule.getOverdue();
             const section = document.getElementById('overdue-section');
             const container = document.getElementById('overdue-followups');
-            
+
             if (error || !overdue || overdue.length === 0) {
                 section.style.display = 'none';
                 return;
             }
-            
+
             section.style.display = 'block';
             container.innerHTML = overdue.map(f => renderFollowupItem(f, true)).join('');
         }
@@ -222,7 +223,7 @@
             const relativeTime = App.getRelativeTime(followup.followup_date);
             const formattedDate = App.formatDate(followup.followup_date);
             const formattedTime = followup.followup_time ? App.formatTime(followup.followup_time) : '';
-            
+
             return `
                 <div class="followup-item ${priority}">
                     <div class="followup-time">
@@ -254,4 +255,5 @@
         }
     </script>
 </body>
+
 </html>

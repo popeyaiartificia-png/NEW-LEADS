@@ -15,8 +15,7 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <div class="logo-icon">📊</div>
-                <span class="logo-text">LeadsPro</span>
+                <img src="Artificia-ai_logo.png" alt="Artificia" style="height: 40px; width: auto;">
             </div>
             <nav>
                 <ul class="nav-menu">
@@ -34,8 +33,8 @@
                     </li>
                     <li class="nav-item">
                         <a href="followups.html" class="nav-link">
-                            <span class="nav-icon">📅</span>
-                            <span class="nav-text">Follow-ups</span>
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Lead Pipeline</span>
                         </a>
                     </li>
                 </ul>
@@ -67,6 +66,7 @@
                         <option value="all">All Status</option>
                         <option value="New">New</option>
                         <option value="Contacted">Contacted</option>
+                        <option value="Follow Up">Follow Up</option>
                         <option value="Interested">Interested</option>
                         <option value="Qualified">Qualified</option>
                         <option value="Converted">Converted</option>
@@ -143,7 +143,6 @@
                         <div class="form-group">
                             <label class="form-label">Source *</label>
                             <select id="lead-source" class="form-select" required>
-                                <option value="">Select source</option>
                                 <option value="Facebook" selected>Facebook</option>
                                 <option value="Instagram">Instagram</option>
                                 <option value="WhatsApp">WhatsApp</option>
@@ -159,6 +158,7 @@
                             <select id="lead-status" class="form-select">
                                 <option value="New">New</option>
                                 <option value="Contacted">Contacted</option>
+                                <option value="Follow Up">Follow Up</option>
                                 <option value="Interested">Interested</option>
                                 <option value="Qualified">Qualified</option>
                                 <option value="Converted">Converted</option>
@@ -243,6 +243,29 @@
         </div>
     </div>
 
+    <!-- Call Notes Modal -->
+    <div id="notes-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3 class="modal-title">📝 Call Notes - <span id="notes-lead-name"></span></h3>
+                <button class="modal-close" onclick="closeNotesModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="notes-lead-id">
+
+                <label class="form-label">Notes History</label>
+                <div class="notes-history" id="notes-history"></div>
+
+                <label class="form-label">Add New Note</label>
+                <div class="add-note-section">
+                    <textarea id="new-note-text" class="form-textarea"
+                        placeholder="Enter your note about this call..."></textarea>
+                    <button class="btn btn-primary" onclick="addNote()">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
@@ -261,6 +284,15 @@
             await loadLeads();
             App.setupModalClose('lead-modal');
             App.setupModalClose('followup-modal');
+
+            // Check for edit parameter in URL (from Pipeline page)
+            const urlParams = new URLSearchParams(window.location.search);
+            const editId = urlParams.get('edit');
+            if (editId) {
+                await openEditLeadModal(editId);
+                // Clean up URL
+                window.history.replaceState({}, '', 'leads.html');
+            }
         });
 
         // Load all leads
@@ -292,7 +324,11 @@
                 return;
             }
 
-            tbody.innerHTML = leads.map(lead => `
+            tbody.innerHTML = leads.map(lead => {
+                const notesData = parseNotes(lead.notes);
+                const noteCount = notesData.length;
+                const latestNote = notesData[0]?.note || '';
+                return `
                 <tr>
                     <td>${App.formatDate(lead.created_at)}</td>
                     <td>
@@ -310,16 +346,18 @@
                             `).join('')}
                         </select>
                     </td>
-                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${lead.notes || ''}">${lead.notes || '-'}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+                        title="${latestNote}">${noteCount > 0 ? `📝 ${noteCount} note${noteCount > 1 ? 's' : ''}` : '-'}</td>
                     <td>
                         <div class="flex gap-sm">
+                            <button class="btn btn-secondary btn-icon" onclick="openNotesModal('${lead.id}', '${lead.name?.replace(/'/g, "\\'") || ''}')" title="Notes">📝</button>
                             <button class="btn btn-secondary btn-icon" onclick="openEditLeadModal('${lead.id}')" title="Edit">✎</button>
                             <button class="btn btn-secondary btn-icon" onclick="openScheduleFollowup('${lead.id}', '${lead.name}')" title="Schedule Follow-up">📅</button>
                             <button class="btn btn-danger btn-icon" onclick="deleteLead('${lead.id}')" title="Delete">🗑</button>
                         </div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         // Search handler with debounce
@@ -509,6 +547,118 @@
 
             App.showToast('Follow-up scheduled successfully!', 'success');
             closeFollowupModal();
+        }
+
+        // ===== CALL NOTES FUNCTIONS =====
+
+        // Parse notes - handles both legacy text and new JSON format
+        function parseNotes(notesField) {
+            if (!notesField) return [];
+
+            try {
+                const parsed = JSON.parse(notesField);
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e) {
+                // Legacy text format - convert to array with unknown date
+                if (notesField.trim()) {
+                    return [{ date: 'Legacy', note: notesField.trim() }];
+                }
+            }
+            return [];
+        }
+
+        // Format notes array to JSON string
+        function stringifyNotes(notesArray) {
+            return JSON.stringify(notesArray);
+        }
+
+        // Open notes modal
+        async function openNotesModal(leadId, leadName) {
+            document.getElementById('notes-lead-id').value = leadId;
+            document.getElementById('notes-lead-name').textContent = leadName || 'Lead';
+            document.getElementById('new-note-text').value = '';
+
+            // Fetch lead data and display notes
+            const { data: lead, error } = await LeadsModule.fetchById(leadId);
+
+            if (error || !lead) {
+                App.showToast('Failed to load notes', 'error');
+                return;
+            }
+
+            const notesData = parseNotes(lead.notes);
+            renderNotesHistory(notesData);
+
+            App.openModal('notes-modal');
+            App.setupModalClose('notes-modal');
+        }
+
+        // Render notes history
+        function renderNotesHistory(notesData) {
+            const container = document.getElementById('notes-history');
+
+            if (!notesData || notesData.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = notesData.map(entry => `
+                <div class="note-entry">
+                    <div class="note-date">${entry.date}</div>
+                    <div class="note-text">${entry.note}</div>
+                </div>
+            `).join('');
+        }
+
+        // Close notes modal
+        function closeNotesModal() {
+            App.closeModal('notes-modal');
+        }
+
+        // Add new note
+        async function addNote() {
+            const leadId = document.getElementById('notes-lead-id').value;
+            const noteText = document.getElementById('new-note-text').value.trim();
+
+            if (!noteText) {
+                App.showToast('Please enter a note', 'error');
+                return;
+            }
+
+            // Fetch current notes
+            const { data: lead, error: fetchError } = await LeadsModule.fetchById(leadId);
+            if (fetchError || !lead) {
+                App.showToast('Failed to load lead', 'error');
+                return;
+            }
+
+            // Parse existing notes and add new one at the beginning
+            const existingNotes = parseNotes(lead.notes);
+            const today = new Date().toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+
+            const newEntry = { date: today, note: noteText };
+            const updatedNotes = [newEntry, ...existingNotes];
+
+            // Save to database
+            const { error: updateError } = await LeadsModule.update(leadId, {
+                notes: stringifyNotes(updatedNotes)
+            });
+
+            if (updateError) {
+                App.showToast('Failed to save note', 'error');
+                return;
+            }
+
+            App.showToast('Note added!', 'success');
+            document.getElementById('new-note-text').value = '';
+            renderNotesHistory(updatedNotes);
+
+            // Refresh leads table to update note count
+            await loadLeads();
         }
     </script>
 </body>

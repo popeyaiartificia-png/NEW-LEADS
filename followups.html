@@ -4,10 +4,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Follow-ups - Lead Management System</title>
-    <meta name="description" content="Manage and track all your follow-ups">
+    <title>Lead Pipeline - Lead Management System</title>
+    <meta name="description" content="View and manage leads organized by status">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Status Tabs */
+        .status-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .status-tab {
+            padding: 10px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--card-bg);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-tab:hover {
+            border-color: var(--primary-color);
+            color: var(--text-primary);
+        }
+
+        .status-tab.active {
+            background: linear-gradient(135deg, #84cc16, #a3e635);
+            border-color: transparent;
+            color: #0a0a0a;
+            box-shadow: 0 4px 12px rgba(132, 204, 22, 0.3);
+        }
+
+        .status-tab .count {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .status-tab:not(.active) .count {
+            background: var(--bg-secondary);
+        }
+
+        /* Date Filter Section */
+        .date-filter-section {
+            margin-bottom: 20px;
+        }
+
+        .date-filter-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .date-filter-toggle:hover {
+            border-color: var(--primary-color);
+        }
+
+        .date-filter-toggle.active {
+            border-color: var(--primary-color);
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .date-filter-toggle .toggle-label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .date-filter-toggle .date-display {
+            color: var(--text-primary);
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .date-filter-toggle .toggle-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .date-filter-toggle.active .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Calendar Container */
+        .calendar-container {
+            display: none;
+            background: var(--card-bg);
+            border: 1px solid var(--primary-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            padding: 20px;
+            animation: slideDown 0.2s ease;
+        }
+
+        .calendar-container.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .calendars-wrapper {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .calendar-box {
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .calendar-box h4 {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Calendar Widget */
+        .calendar-widget {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-secondary);
+        }
+
+        .calendar-header button {
+            background: none;
+            border: none;
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .calendar-header button:hover {
+            background: var(--border-color);
+        }
+
+        .calendar-header .month-year {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            padding: 8px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 8px 0;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            color: var(--text-primary);
+        }
+
+        .calendar-day:hover:not(.empty):not(.selected) {
+            background: rgba(132, 204, 22, 0.15);
+        }
+
+        .calendar-day.empty {
+            cursor: default;
+        }
+
+        .calendar-day.today {
+            background: rgba(132, 204, 22, 0.2);
+            font-weight: 600;
+        }
+
+        .calendar-day.selected {
+            background: var(--primary-color);
+            color: #0a0a0a;
+            font-weight: 600;
+        }
+
+        .calendar-day.in-range {
+            background: rgba(132, 204, 22, 0.1);
+        }
+
+        .calendar-day.other-month {
+            color: var(--text-secondary);
+            opacity: 0.5;
+        }
+
+        /* Calendar Actions */
+        .calendar-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .quick-filter {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quick-filter:hover {
+            border-color: var(--primary-color);
+            color: var(--text-primary);
+        }
+
+        .quick-filter.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: #0a0a0a;
+        }
+
+        /* Stats cards for status */
+        .status-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 24px;
+            justify-content: flex-start;
+        }
+
+        .status-stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .status-stat-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .status-stat-card.active {
+            border-color: var(--primary-color);
+            background: rgba(132, 204, 22, 0.1);
+        }
+
+        .status-stat-card .stat-emoji {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .status-stat-card .stat-count {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .status-stat-card .stat-name {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+    </style>
 </head>
 
 <body>
@@ -15,8 +324,7 @@
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="logo">
-                <div class="logo-icon">📊</div>
-                <span class="logo-text">LeadsPro</span>
+                <img src="Artificia-ai_logo.png" alt="Artificia" style="height: 40px; width: auto;">
             </div>
             <nav>
                 <ul class="nav-menu">
@@ -34,8 +342,8 @@
                     </li>
                     <li class="nav-item">
                         <a href="followups.html" class="nav-link active">
-                            <span class="nav-icon">📅</span>
-                            <span class="nav-text">Follow-ups</span>
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Lead Pipeline</span>
                         </a>
                     </li>
                 </ul>
@@ -47,91 +355,64 @@
             <!-- Page Header -->
             <div class="page-header">
                 <div>
-                    <h1 class="page-title">Follow-ups</h1>
-                    <p id="current-date" class="current-date"></p>
-                </div>
-                <button class="btn btn-primary" onclick="openAddFollowupModal()">
-                    <span>+</span> Add Follow-up
-                </button>
-            </div>
-
-            <!-- Toolbar -->
-            <div class="toolbar">
-                <div class="filter-group">
-                    <select id="priority-filter" class="form-select" onchange="handleFilter()">
-                        <option value="all">All Priorities</option>
-                        <option value="High">🔴 High</option>
-                        <option value="Medium">🟠 Medium</option>
-                        <option value="Low">🟢 Low</option>
-                    </select>
-                    <select id="status-filter" class="form-select" onchange="handleFilter()">
-                        <option value="Pending">Pending</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="all">All Status</option>
-                    </select>
-                    <select id="date-filter" class="form-select" onchange="handleFilter()">
-                        <option value="all">All Dates</option>
-                        <option value="overdue">Overdue</option>
-                        <option value="today">Today</option>
-                        <option value="tomorrow">Tomorrow</option>
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                    </select>
+                    <h1 class="page-title">Lead Pipeline</h1>
+                    <p class="page-subtitle">Leads organized by status - changes sync automatically from Leads page</p>
                 </div>
             </div>
 
-            <!-- Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon danger">⚠️</div>
-                    <div>
-                        <div id="stat-overdue" class="stat-value">0</div>
-                        <div class="stat-label">Overdue</div>
-                    </div>
+            <!-- Date Filter Section -->
+            <div class="date-filter-section">
+                <div class="date-filter-toggle" onclick="toggleCalendar()">
+                    <span class="toggle-label">📅 Filter by Date:</span>
+                    <span class="date-display" id="date-display">All Time</span>
+                    <span class="toggle-icon">▼</span>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon warning">📅</div>
-                    <div>
-                        <div id="stat-today" class="stat-value">0</div>
-                        <div class="stat-label">Today</div>
+                <div class="calendar-container" id="calendar-container">
+                    <div class="calendars-wrapper">
+                        <div class="calendar-box">
+                            <h4>From Date</h4>
+                            <div class="calendar-widget" id="calendar-from"></div>
+                        </div>
+                        <div class="calendar-box">
+                            <h4>To Date</h4>
+                            <div class="calendar-widget" id="calendar-to"></div>
+                        </div>
                     </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon primary">⏳</div>
-                    <div>
-                        <div id="stat-pending" class="stat-value">0</div>
-                        <div class="stat-label">Pending</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon success">✓</div>
-                    <div>
-                        <div id="stat-completed" class="stat-value">0</div>
-                        <div class="stat-label">Completed</div>
+                    <div class="calendar-actions">
+                        <button class="quick-filter" onclick="setQuickFilter('today')">Today</button>
+                        <button class="quick-filter" onclick="setQuickFilter('week')">This Week</button>
+                        <button class="quick-filter" onclick="setQuickFilter('month')">This Month</button>
+                        <button class="quick-filter" onclick="setQuickFilter('all')">All Time</button>
+                        <button class="btn btn-secondary" onclick="clearDateFilter()" style="margin-left: auto;">Clear
+                            Filter</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Follow-ups Table -->
+            <!-- Status Stats Cards -->
+            <div class="status-stats" id="status-stats"></div>
+
+            <!-- Status Tabs -->
+            <div class="status-tabs" id="status-tabs"></div>
+
+            <!-- Leads Table -->
             <div class="card">
                 <div class="table-container">
                     <table class="table">
                         <thead>
                             <tr>
                                 <th>Date</th>
-                                <th>Time</th>
-                                <th>Lead</th>
-                                <th>Description</th>
-                                <th>Priority</th>
+                                <th>Name</th>
+                                <th>Contact</th>
+                                <th>Source</th>
+                                <th>Notes</th>
                                 <th>Status</th>
-                                <th>Reminder</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="followups-table-body">
+                        <tbody id="leads-table-body">
                             <tr>
-                                <td colspan="8" class="text-center text-muted">Loading follow-ups...</td>
+                                <td colspan="7" class="text-center text-muted">Loading leads...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -140,74 +421,25 @@
         </main>
     </div>
 
-    <!-- Add/Edit Follow-up Modal -->
-    <div id="followup-modal" class="modal-overlay">
-        <div class="modal">
+    <!-- Call Notes Modal -->
+    <div id="notes-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 550px;">
             <div class="modal-header">
-                <h3 id="modal-title" class="modal-title">Add Follow-up</h3>
-                <button class="modal-close" onclick="closeFollowupModal()">✕</button>
+                <h3 class="modal-title">📝 Call Notes - <span id="notes-lead-name"></span></h3>
+                <button class="modal-close" onclick="closeNotesModal()">✕</button>
             </div>
             <div class="modal-body">
-                <form id="followup-form">
-                    <input type="hidden" id="followup-id">
+                <input type="hidden" id="notes-lead-id">
 
-                    <div class="form-group">
-                        <label class="form-label">Search Lead by Phone *</label>
-                        <input type="text" id="lead-search" class="form-input"
-                            placeholder="Type phone number to search..." oninput="filterLeadsByPhone(this.value)">
-                    </div>
+                <label class="form-label">Notes History</label>
+                <div class="notes-history" id="notes-history"></div>
 
-                    <div class="form-group">
-                        <label class="form-label">Select Lead *</label>
-                        <select id="followup-lead" class="form-select" required>
-                            <option value="">Select a lead...</option>
-                        </select>
-                        <small class="text-muted" style="font-size: 0.75rem; margin-top: 4px; display: block;">Leads
-                            sorted by phone number</small>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Follow-up Date *</label>
-                            <input type="date" id="followup-date" class="form-input" required>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Time (Optional)</label>
-                            <input type="time" id="followup-time" class="form-input">
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Priority</label>
-                            <select id="followup-priority" class="form-select">
-                                <option value="High">🔴 High</option>
-                                <option value="Medium" selected>🟠 Medium</option>
-                                <option value="Low">🟢 Low</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Remind Me</label>
-                            <select id="followup-reminder" class="form-select">
-                                <option value="0">On the day</option>
-                                <option value="1" selected>1 day before</option>
-                                <option value="2">2 days before</option>
-                                <option value="3">3 days before</option>
-                                <option value="7">1 week before</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Description</label>
-                        <textarea id="followup-description" class="form-textarea"
-                            placeholder="What needs to be done in this follow-up?"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeFollowupModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="saveFollowup()">Save Follow-up</button>
+                <label class="form-label">Add New Note</label>
+                <div class="add-note-section">
+                    <textarea id="new-note-text" class="form-textarea"
+                        placeholder="Enter your note about this call..."></textarea>
+                    <button class="btn btn-primary" onclick="addNote()">Add</button>
+                </div>
             </div>
         </div>
     </div>
@@ -219,370 +451,500 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
     <script src="js/leads.js"></script>
-    <script src="js/followups.js"></script>
     <script src="js/app.js"></script>
     <script>
-        // All followups data
-        let allFollowups = [];
+        // Status configuration with emojis
+        const statusConfig = [
+            { value: 'New', emoji: '🆕', color: '#3b82f6' },
+            { value: 'Contacted', emoji: '📞', color: '#8b5cf6' },
+            { value: 'Follow Up', emoji: '📅', color: '#f59e0b' },
+            { value: 'Interested', emoji: '🔥', color: '#ef4444' },
+            { value: 'Qualified', emoji: '⭐', color: '#10b981' },
+            { value: 'Converted', emoji: '🎉', color: '#22c55e' },
+            { value: 'Lost', emoji: '❌', color: '#6b7280' }
+        ];
+
+        // State
         let allLeads = [];
+        let currentStatus = 'all';
+        let dateFrom = null;
+        let dateTo = null;
+        let calendarFromMonth = new Date();
+        let calendarToMonth = new Date();
 
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadData();
-            App.setupModalClose('followup-modal');
-
-            // Check for edit parameter in URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const editId = urlParams.get('edit');
-            if (editId) {
-                await openEditFollowupModal(editId);
-            }
+            await loadLeads();
+            renderCalendar('calendar-from', calendarFromMonth, 'from');
+            renderCalendar('calendar-to', calendarToMonth, 'to');
         });
 
-        // Load all data
-        async function loadData() {
-            await Promise.all([
-                loadFollowups(),
-                loadLeadsForSelect()
-            ]);
-            await loadStats();
+        // Toggle calendar visibility
+        function toggleCalendar() {
+            const toggle = document.querySelector('.date-filter-toggle');
+            const container = document.getElementById('calendar-container');
+            toggle.classList.toggle('active');
+            container.classList.toggle('show');
         }
 
-        // Load all leads for the select dropdown
-        async function loadLeadsForSelect() {
-            const { data, error } = await LeadsModule.fetchAll();
-            if (!error) {
-                allLeads = data;
-                populateLeadSelect();
-            }
-        }
-
-        // Populate lead select dropdown (sorted by phone number)
-        function populateLeadSelect(filterQuery = '') {
-            const select = document.getElementById('followup-lead');
-            select.innerHTML = '<option value="">Select a lead...</option>';
-
-            // Sort leads by phone number (primary key)
-            let sortedLeads = [...allLeads].sort((a, b) => {
-                const phoneA = (a.phone || '').replace(/\D/g, '');
-                const phoneB = (b.phone || '').replace(/\D/g, '');
-                return phoneA.localeCompare(phoneB);
-            });
-
-            // Filter by phone number if search query provided
-            if (filterQuery.trim()) {
-                const query = filterQuery.replace(/\D/g, '').toLowerCase();
-                sortedLeads = sortedLeads.filter(lead => {
-                    const phone = (lead.phone || '').replace(/\D/g, '');
-                    return phone.includes(query);
-                });
-            }
-
-            sortedLeads.forEach(lead => {
-                const option = document.createElement('option');
-                option.value = lead.id;
-                option.textContent = `📞 ${lead.phone || 'No phone'} - ${lead.name}`;
-                select.appendChild(option);
-            });
-
-            // Auto-select if only one match
-            if (sortedLeads.length === 1) {
-                select.value = sortedLeads[0].id;
-            }
-        }
-
-        // Filter leads by phone number in dropdown
-        function filterLeadsByPhone(query) {
-            populateLeadSelect(query);
-        }
-
-        // Load all followups
-        async function loadFollowups() {
-            const { data, error } = await FollowupsModule.fetchAll();
-
-            if (error) {
-                App.showToast('Failed to load follow-ups', 'error');
-                return;
-            }
-
-            allFollowups = data;
-            handleFilter(); // Apply current filters
-        }
-
-        // Load stats
-        async function loadStats() {
-            const today = new Date().toISOString().split('T')[0];
-
-            let overdue = 0, todayCount = 0, pending = 0, completed = 0;
-
-            allFollowups.forEach(f => {
-                const fDate = f.followup_date.split('T')[0];
-
-                if (f.status === 'Completed') {
-                    completed++;
-                } else if (f.status === 'Pending') {
-                    pending++;
-                    if (fDate === today) todayCount++;
-                    if (fDate < today) overdue++;
-                }
-            });
-
-            document.getElementById('stat-overdue').textContent = overdue;
-            document.getElementById('stat-today').textContent = todayCount;
-            document.getElementById('stat-pending').textContent = pending;
-            document.getElementById('stat-completed').textContent = completed;
-        }
-
-        // Filter handler
-        function handleFilter() {
-            const priorityFilter = document.getElementById('priority-filter').value;
-            const statusFilter = document.getElementById('status-filter').value;
-            const dateFilter = document.getElementById('date-filter').value;
-
+        // Render calendar
+        function renderCalendar(containerId, date, type) {
+            const container = document.getElementById(containerId);
+            const year = date.getFullYear();
+            const month = date.getMonth();
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const todayStr = today.toISOString().split('T')[0];
 
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const tomorrowStr = tomorrow.toISOString().split('T')[0];
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDay = firstDay.getDay();
+            const daysInMonth = lastDay.getDate();
 
-            const weekEnd = new Date(today);
-            weekEnd.setDate(weekEnd.getDate() + 7);
-            const weekEndStr = weekEnd.toISOString().split('T')[0];
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December'];
+            const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-            const monthEnd = new Date(today);
-            monthEnd.setMonth(monthEnd.getMonth() + 1);
-            const monthEndStr = monthEnd.toISOString().split('T')[0];
+            let html = `
+                <div class="calendar-header">
+                    <button onclick="changeMonth('${type}', -1)">◀</button>
+                    <span class="month-year">${monthNames[month]} ${year}</span>
+                    <button onclick="changeMonth('${type}', 1)">▶</button>
+                </div>
+                <div class="calendar-grid">
+                    ${dayNames.map(d => `<div class="calendar-day-header">${d}</div>`).join('')}
+            `;
 
-            let filtered = [...allFollowups];
-
-            // Priority filter
-            if (priorityFilter !== 'all') {
-                filtered = filtered.filter(f => f.priority === priorityFilter);
+            // Empty cells before first day
+            for (let i = 0; i < startDay; i++) {
+                html += `<div class="calendar-day empty"></div>`;
             }
 
-            // Status filter
-            if (statusFilter !== 'all') {
-                filtered = filtered.filter(f => f.status === statusFilter);
+            // Days of month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month, day);
+                const dateStr = formatDateStr(currentDate);
+                const isToday = currentDate.getTime() === today.getTime();
+                const isSelected = (type === 'from' && dateFrom === dateStr) ||
+                    (type === 'to' && dateTo === dateStr);
+                const isInRange = dateFrom && dateTo && dateStr >= dateFrom && dateStr <= dateTo;
+
+                let classes = 'calendar-day';
+                if (isToday) classes += ' today';
+                if (isSelected) classes += ' selected';
+                else if (isInRange) classes += ' in-range';
+
+                html += `<div class="${classes}" onclick="selectDate('${type}', '${dateStr}')">${day}</div>`;
             }
 
-            // Date filter
-            if (dateFilter !== 'all') {
-                filtered = filtered.filter(f => {
-                    const fDate = f.followup_date.split('T')[0];
+            html += `</div>`;
+            container.innerHTML = html;
+        }
 
-                    switch (dateFilter) {
-                        case 'overdue': return fDate < todayStr && f.status === 'Pending';
-                        case 'today': return fDate === todayStr;
-                        case 'tomorrow': return fDate === tomorrowStr;
-                        case 'week': return fDate >= todayStr && fDate <= weekEndStr;
-                        case 'month': return fDate >= todayStr && fDate <= monthEndStr;
-                        default: return true;
-                    }
+        // Change month
+        function changeMonth(type, delta) {
+            if (type === 'from') {
+                calendarFromMonth.setMonth(calendarFromMonth.getMonth() + delta);
+                renderCalendar('calendar-from', calendarFromMonth, 'from');
+            } else {
+                calendarToMonth.setMonth(calendarToMonth.getMonth() + delta);
+                renderCalendar('calendar-to', calendarToMonth, 'to');
+            }
+        }
+
+        // Select date
+        function selectDate(type, dateStr) {
+            if (type === 'from') {
+                dateFrom = dateStr;
+            } else {
+                dateTo = dateStr;
+            }
+            updateDateDisplay();
+            renderCalendar('calendar-from', calendarFromMonth, 'from');
+            renderCalendar('calendar-to', calendarToMonth, 'to');
+            handleFilter();
+        }
+
+        // Format date string
+        function formatDateStr(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Update date display
+        function updateDateDisplay() {
+            const display = document.getElementById('date-display');
+            if (!dateFrom && !dateTo) {
+                display.textContent = 'All Time';
+            } else if (dateFrom && dateTo) {
+                display.textContent = `${formatDisplayDate(dateFrom)} → ${formatDisplayDate(dateTo)}`;
+            } else if (dateFrom) {
+                display.textContent = `From ${formatDisplayDate(dateFrom)}`;
+            } else {
+                display.textContent = `Until ${formatDisplayDate(dateTo)}`;
+            }
+        }
+
+        // Format date for display
+        function formatDisplayDate(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            const date = new Date(year, month - 1, day);
+            return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        // Set quick filter
+        function setQuickFilter(type) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            switch (type) {
+                case 'today':
+                    dateFrom = formatDateStr(today);
+                    dateTo = formatDateStr(today);
+                    break;
+                case 'week':
+                    const weekStart = new Date(today);
+                    weekStart.setDate(today.getDate() - today.getDay());
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekStart.getDate() + 6);
+                    dateFrom = formatDateStr(weekStart);
+                    dateTo = formatDateStr(weekEnd);
+                    break;
+                case 'month':
+                    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    dateFrom = formatDateStr(monthStart);
+                    dateTo = formatDateStr(monthEnd);
+                    break;
+                case 'all':
+                    dateFrom = null;
+                    dateTo = null;
+                    break;
+            }
+
+            updateDateDisplay();
+            renderCalendar('calendar-from', calendarFromMonth, 'from');
+            renderCalendar('calendar-to', calendarToMonth, 'to');
+            handleFilter();
+        }
+
+        // Clear date filter
+        function clearDateFilter() {
+            dateFrom = null;
+            dateTo = null;
+            updateDateDisplay();
+            renderCalendar('calendar-from', calendarFromMonth, 'from');
+            renderCalendar('calendar-to', calendarToMonth, 'to');
+            handleFilter();
+        }
+
+        // Load all leads
+        async function loadLeads() {
+            const { data, error } = await LeadsModule.fetchAll();
+
+            if (error) {
+                App.showToast('Failed to load leads', 'error');
+                return;
+            }
+
+            allLeads = data;
+            renderStatusStats();
+            renderStatusTabs();
+            handleFilter();
+        }
+
+        // Render status stats cards
+        function renderStatusStats() {
+            const container = document.getElementById('status-stats');
+            const counts = getStatusCounts();
+
+            container.innerHTML = statusConfig.map(s => `
+                <div class="status-stat-card ${currentStatus === s.value ? 'active' : ''}" 
+                     onclick="selectStatus('${s.value}')">
+                    <div class="stat-emoji">${s.emoji}</div>
+                    <div class="stat-count">${counts[s.value] || 0}</div>
+                    <div class="stat-name">${s.value}</div>
+                </div>
+            `).join('');
+        }
+
+        // Render status tabs
+        function renderStatusTabs() {
+            const container = document.getElementById('status-tabs');
+            const counts = getStatusCounts();
+
+            let html = `
+                <button class="status-tab ${currentStatus === 'all' ? 'active' : ''}" 
+                        onclick="selectStatus('all')">
+                    📋 All Leads
+                    <span class="count">${allLeads.length}</span>
+                </button>
+            `;
+
+            html += statusConfig.map(s => `
+                <button class="status-tab ${currentStatus === s.value ? 'active' : ''}" 
+                        onclick="selectStatus('${s.value}')">
+                    ${s.emoji} ${s.value}
+                    <span class="count">${counts[s.value] || 0}</span>
+                </button>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        // Get counts per status
+        function getStatusCounts() {
+            const counts = {};
+            allLeads.forEach(lead => {
+                const status = lead.status || 'New';
+                counts[status] = (counts[status] || 0) + 1;
+            });
+            return counts;
+        }
+
+        // Select status tab
+        function selectStatus(status) {
+            currentStatus = status;
+            renderStatusStats();
+            renderStatusTabs();
+            handleFilter();
+        }
+
+        // Handle filtering
+        function handleFilter() {
+            let filtered = [...allLeads];
+
+            // Filter by status
+            if (currentStatus !== 'all') {
+                filtered = filtered.filter(lead => lead.status === currentStatus);
+            }
+
+            // Filter by date range
+            if (dateFrom) {
+                filtered = filtered.filter(lead => {
+                    const leadDate = lead.created_at?.split('T')[0];
+                    return leadDate >= dateFrom;
                 });
             }
 
-            renderFollowupsTable(filtered);
+            if (dateTo) {
+                filtered = filtered.filter(lead => {
+                    const leadDate = lead.created_at?.split('T')[0];
+                    return leadDate <= dateTo;
+                });
+            }
+
+            renderLeadsTable(filtered);
         }
 
-        // Render followups table
-        function renderFollowupsTable(followups) {
-            const tbody = document.getElementById('followups-table-body');
-            const today = new Date().toISOString().split('T')[0];
+        // Render leads table
+        function renderLeadsTable(leads) {
+            const tbody = document.getElementById('leads-table-body');
 
-            if (!followups || followups.length === 0) {
+            if (!leads || leads.length === 0) {
+                const statusText = currentStatus === 'all' ? '' : ` with status "${currentStatus}"`;
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="empty-state">
+                        <td colspan="7" class="empty-state">
                             <div class="empty-icon">📭</div>
-                            <p>No follow-ups found</p>
+                            <p>No leads found${statusText}</p>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            tbody.innerHTML = followups.map(f => {
-                const leadName = f.leads ? f.leads.name : 'Unknown Lead';
-                const fDate = f.followup_date.split('T')[0];
-                const isOverdue = fDate < today && f.status === 'Pending';
-                const isToday = fDate === today;
-
-                const reminderText = App.reminderDays.find(r => r.value === f.reminder_days)?.label || 'On the day';
-
+            tbody.innerHTML = leads.map(lead => {
+                const notesData = parseNotes(lead.notes);
+                const noteCount = notesData.length;
                 return `
-                    <tr style="${isOverdue ? 'background: rgba(239, 68, 68, 0.1);' : isToday ? 'background: rgba(245, 158, 11, 0.1);' : ''}">
-                        <td>
-                            <div>${App.formatDate(f.followup_date)}</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">${App.getRelativeTime(f.followup_date)}</div>
-                        </td>
-                        <td>${f.followup_time ? App.formatTime(f.followup_time) : '-'}</td>
-                        <td>
-                            <a href="leads.html" style="color: var(--text-primary);">${leadName}</a>
-                        </td>
-                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${f.description || ''}">${f.description || '-'}</td>
-                        <td>${App.getPriorityBadge(f.priority)}</td>
-                        <td>
-                            <select class="form-select" style="min-width: 110px;" onchange="updateFollowupStatus('${f.id}', this.value)" ${f.status === 'Completed' ? 'disabled' : ''}>
-                                <option value="Pending" ${f.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                                <option value="Completed" ${f.status === 'Completed' ? 'selected' : ''}>Completed</option>
-                                <option value="Cancelled" ${f.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                            </select>
-                        </td>
-                        <td>${reminderText}</td>
-                        <td>
-                            <div class="flex gap-sm">
-                                ${f.status === 'Pending' ? `
-                                    <button class="btn btn-secondary btn-icon" onclick="markComplete('${f.id}')" title="Mark Complete">✓</button>
-                                ` : ''}
-                                <button class="btn btn-secondary btn-icon" onclick="openEditFollowupModal('${f.id}')" title="Edit">✎</button>
-                                <button class="btn btn-danger btn-icon" onclick="deleteFollowup('${f.id}')" title="Delete">🗑</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                <tr>
+                    <td>${App.formatDate(lead.created_at)}</td>
+                    <td>
+                        <strong>${lead.name || '-'}</strong>
+                    </td>
+                    <td>
+                        <div>${lead.phone || '-'}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">${lead.email || ''}</div>
+                    </td>
+                    <td>${lead.source || '-'}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" 
+                        title="${notesData[0]?.note || ''}">${noteCount > 0 ? `📝 ${noteCount} note${noteCount > 1 ? 's' : ''}` : '-'}</td>
+                    <td>
+                        <select class="form-select" style="min-width: 130px;" 
+                                onchange="updateLeadStatus('${lead.id}', this.value)">
+                            ${statusConfig.map(s => `
+                                <option value="${s.value}" ${lead.status === s.value ? 'selected' : ''}>
+                                    ${s.emoji} ${s.value}
+                                </option>
+                            `).join('')}
+                        </select>
+                    </td>
+                    <td>
+                        <div class="flex gap-sm">
+                            <button class="btn btn-secondary btn-icon" onclick="openNotesModal('${lead.id}', '${lead.name?.replace(/'/g, "\\'") || ''}')" title="Notes">📝</button>
+                            <button class="btn btn-secondary btn-icon" onclick="editLead('${lead.id}')" title="Edit">✎</button>
+                            <button class="btn btn-danger btn-icon" onclick="deleteLead('${lead.id}')" title="Delete">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
         }
 
-        // Open add followup modal
-        function openAddFollowupModal() {
-            document.getElementById('modal-title').textContent = 'Add Follow-up';
-            document.getElementById('followup-form').reset();
-            document.getElementById('followup-id').value = '';
-            document.getElementById('lead-search').value = '';
+        // Update lead status
+        async function updateLeadStatus(id, status) {
+            const { error } = await LeadsModule.updateStatus(id, status);
 
-            // Repopulate leads sorted by phone
-            populateLeadSelect();
-
-            // Set default date to tomorrow
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            document.getElementById('followup-date').value = tomorrow.toISOString().split('T')[0];
-
-            // Reset priority and reminder to defaults
-            document.getElementById('followup-priority').value = 'Medium';
-            document.getElementById('followup-reminder').value = '1';
-
-            App.openModal('followup-modal');
-        }
-
-        // Open edit followup modal
-        async function openEditFollowupModal(id) {
-            const followup = allFollowups.find(f => f.id === id);
-
-            if (!followup) {
-                App.showToast('Follow-up not found', 'error');
-                return;
-            }
-
-            document.getElementById('modal-title').textContent = 'Edit Follow-up';
-            document.getElementById('followup-id').value = followup.id;
-            document.getElementById('followup-lead').value = followup.lead_id || '';
-            document.getElementById('followup-date').value = followup.followup_date.split('T')[0];
-            document.getElementById('followup-time').value = followup.followup_time || '';
-            document.getElementById('followup-priority').value = followup.priority || 'Medium';
-            document.getElementById('followup-reminder').value = followup.reminder_days || 0;
-            document.getElementById('followup-description').value = followup.description || '';
-
-            App.openModal('followup-modal');
-        }
-
-        // Close followup modal
-        function closeFollowupModal() {
-            App.closeModal('followup-modal');
-
-            // Remove edit parameter from URL
-            const url = new URL(window.location);
-            url.searchParams.delete('edit');
-            window.history.replaceState({}, '', url);
-        }
-
-        // Save followup
-        async function saveFollowup() {
-            const id = document.getElementById('followup-id').value;
-            const followupData = {
-                lead_id: document.getElementById('followup-lead').value,
-                followup_date: document.getElementById('followup-date').value,
-                followup_time: document.getElementById('followup-time').value || null,
-                priority: document.getElementById('followup-priority').value,
-                reminder_days: parseInt(document.getElementById('followup-reminder').value),
-                description: document.getElementById('followup-description').value.trim()
-            };
-
-            // Validation
-            if (!followupData.lead_id || !followupData.followup_date) {
-                App.showToast('Please select a lead and date', 'error');
-                return;
-            }
-
-            let result;
-            if (id) {
-                result = await FollowupsModule.update(id, followupData);
-            } else {
-                result = await FollowupsModule.add(followupData);
-            }
-
-            if (result.error) {
-                App.showToast('Failed to save follow-up', 'error');
-                return;
-            }
-
-            App.showToast(id ? 'Follow-up updated!' : 'Follow-up scheduled!', 'success');
-            closeFollowupModal();
-            await loadData();
-        }
-
-        // Update followup status
-        async function updateFollowupStatus(id, status) {
-            let result;
-
-            if (status === 'Completed') {
-                result = await FollowupsModule.markComplete(id);
-            } else if (status === 'Cancelled') {
-                result = await FollowupsModule.cancel(id);
-            } else {
-                result = await FollowupsModule.update(id, { status });
-            }
-
-            if (result.error) {
+            if (error) {
                 App.showToast('Failed to update status', 'error');
-                await loadData();
+                await loadLeads();
                 return;
             }
 
-            App.showToast('Status updated!', 'success');
-            await loadData();
+            App.showToast(`Lead moved to "${status}"!`, 'success');
+
+            // Update local data
+            const lead = allLeads.find(l => l.id === id);
+            if (lead) lead.status = status;
+
+            // Re-render with updated counts and filtered view
+            renderStatusStats();
+            renderStatusTabs();
+            handleFilter();
         }
 
-        // Mark as complete
-        async function markComplete(id) {
-            const { error } = await FollowupsModule.markComplete(id);
-
-            if (error) {
-                App.showToast('Failed to complete follow-up', 'error');
-                return;
-            }
-
-            App.showToast('Follow-up completed!', 'success');
-            await loadData();
+        // Edit lead - redirect to leads page with edit modal
+        function editLead(id) {
+            window.location.href = `leads.html?edit=${id}`;
         }
 
-        // Delete followup
-        async function deleteFollowup(id) {
-            if (!confirm('Are you sure you want to delete this follow-up?')) {
+        // Delete lead
+        async function deleteLead(id) {
+            if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
                 return;
             }
 
-            const { error } = await FollowupsModule.delete(id);
+            const { error } = await LeadsModule.delete(id);
 
             if (error) {
-                App.showToast('Failed to delete follow-up', 'error');
+                App.showToast('Failed to delete lead', 'error');
                 return;
             }
 
-            App.showToast('Follow-up deleted!', 'success');
-            await loadData();
+            App.showToast('Lead deleted successfully!', 'success');
+            await loadLeads();
+        }
+
+        // ===== CALL NOTES FUNCTIONS =====
+
+        // Parse notes - handles both legacy text and new JSON format
+        function parseNotes(notesField) {
+            if (!notesField) return [];
+
+            try {
+                const parsed = JSON.parse(notesField);
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e) {
+                // Legacy text format - convert to array with unknown date
+                if (notesField.trim()) {
+                    return [{ date: 'Legacy', note: notesField.trim() }];
+                }
+            }
+            return [];
+        }
+
+        // Format notes array to JSON string
+        function stringifyNotes(notesArray) {
+            return JSON.stringify(notesArray);
+        }
+
+        // Open notes modal
+        async function openNotesModal(leadId, leadName) {
+            document.getElementById('notes-lead-id').value = leadId;
+            document.getElementById('notes-lead-name').textContent = leadName || 'Lead';
+            document.getElementById('new-note-text').value = '';
+
+            // Fetch lead data and display notes
+            const { data: lead, error } = await LeadsModule.fetchById(leadId);
+
+            if (error || !lead) {
+                App.showToast('Failed to load notes', 'error');
+                return;
+            }
+
+            const notesData = parseNotes(lead.notes);
+            renderNotesHistory(notesData);
+
+            App.openModal('notes-modal');
+            App.setupModalClose('notes-modal');
+        }
+
+        // Render notes history
+        function renderNotesHistory(notesData) {
+            const container = document.getElementById('notes-history');
+
+            if (!notesData || notesData.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = notesData.map(entry => `
+                <div class="note-entry">
+                    <div class="note-date">${entry.date}</div>
+                    <div class="note-text">${entry.note}</div>
+                </div>
+            `).join('');
+        }
+
+        // Close notes modal
+        function closeNotesModal() {
+            App.closeModal('notes-modal');
+        }
+
+        // Add new note
+        async function addNote() {
+            const leadId = document.getElementById('notes-lead-id').value;
+            const noteText = document.getElementById('new-note-text').value.trim();
+
+            if (!noteText) {
+                App.showToast('Please enter a note', 'error');
+                return;
+            }
+
+            // Fetch current notes
+            const { data: lead, error: fetchError } = await LeadsModule.fetchById(leadId);
+            if (fetchError || !lead) {
+                App.showToast('Failed to load lead', 'error');
+                return;
+            }
+
+            // Parse existing notes and add new one at the beginning
+            const existingNotes = parseNotes(lead.notes);
+            const today = new Date().toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+
+            const newEntry = { date: today, note: noteText };
+            const updatedNotes = [newEntry, ...existingNotes];
+
+            // Save to database
+            const { error: updateError } = await LeadsModule.update(leadId, {
+                notes: stringifyNotes(updatedNotes)
+            });
+
+            if (updateError) {
+                App.showToast('Failed to save note', 'error');
+                return;
+            }
+
+            App.showToast('Note added!', 'success');
+            document.getElementById('new-note-text').value = '';
+            renderNotesHistory(updatedNotes);
+
+            // Update local data and refresh table
+            const localLead = allLeads.find(l => l.id === leadId);
+            if (localLead) localLead.notes = stringifyNotes(updatedNotes);
+            handleFilter();
         }
     </script>
 </body>
