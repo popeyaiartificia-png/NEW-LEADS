@@ -299,6 +299,7 @@
     <script>
         // All leads data
         let allLeads = [];
+        let returnUrl = null;
 
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', async () => {
@@ -311,9 +312,10 @@
             const editId = urlParams.get('edit');
             if (editId) {
                 await openEditLeadModal(editId);
-                // Clean up URL
-                window.history.replaceState({}, '', 'leads.html');
             }
+
+            // Check for return URL
+            returnUrl = urlParams.get('return');
         });
 
         // Load all leads
@@ -512,7 +514,17 @@
             }
 
             closeLeadModal();
-            await loadLeads();
+
+            if (returnUrl) {
+                // Return to original page after a short delay for the toast
+                setTimeout(() => {
+                    window.location.href = returnUrl;
+                }, 1000);
+            } else {
+                await loadLeads();
+                // If it was an edit, clean up URL if no return URL
+                if (id) window.history.replaceState({}, '', 'leads.html');
+            }
         }
 
         // Update lead status directly from table

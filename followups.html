@@ -904,9 +904,9 @@
             handleFilter();
         }
 
-        // Edit lead - redirect to leads page with edit modal
+        // Edit lead - redirect to leads page with edit modal and return parameter
         function editLead(id) {
-            window.location.href = `leads.html?edit=${id}`;
+            window.location.href = `leads.html?edit=${id}&return=${encodeURIComponent('followups.html?status=' + currentStatus)}`;
         }
 
         // Delete lead
