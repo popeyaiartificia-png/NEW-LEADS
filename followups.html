@@ -654,9 +654,22 @@
             }
 
             allLeads = data;
+            await syncReminderCount();
             renderStatusStats();
             renderStatusTabs();
             handleFilter();
+        }
+
+        // Synchronize reminder count across all tabs
+        async function syncReminderCount() {
+            const { data: reminders } = await FollowupsModule.getTodaysReminders();
+            const { data: overdue } = await FollowupsModule.getOverdue();
+            const { data: upcoming } = await FollowupsModule.getUpcoming(7);
+
+            // Combine all pending/relevant followups
+            const combined = [...overdue, ...reminders, ...upcoming];
+            // Remove duplicates if any (by id)
+            window.reminderCount = Array.from(new Map(combined.map(f => [f.id, f])).values()).length;
         }
 
         // Render status stats cards
@@ -718,17 +731,14 @@
 
         // Handle filtering
         async function handleFilter() {
-            let filtered = [...allLeads];
-
             // Filter by status
             if (currentStatus === 'Reminders') {
                 const { data: reminders } = await FollowupsModule.getTodaysReminders();
                 const { data: overdue } = await FollowupsModule.getOverdue();
                 const { data: upcoming } = await FollowupsModule.getUpcoming(7);
 
-                // Combine all pending/relevant followups
+                // Combine and deduplicate
                 const combined = [...overdue, ...reminders, ...upcoming];
-                // Remove duplicates if any (by id)
                 const unique = Array.from(new Map(combined.map(f => [f.id, f])).values());
 
                 window.reminderCount = unique.length;
@@ -736,6 +746,7 @@
                 return;
             }
 
+            let filtered = [...allLeads];
             if (currentStatus !== 'all') {
                 filtered = filtered.filter(lead => lead.status === currentStatus);
             }
@@ -756,18 +767,6 @@
             }
 
             renderLeadsTable(filtered);
-
-            // Update counts for Reminders tab if not already fetched
-            if (!window.reminderCountFetched) {
-                const { data: reminders } = await FollowupsModule.getTodaysReminders();
-                const { data: overdue } = await FollowupsModule.getOverdue();
-                const { data: upcoming } = await FollowupsModule.getUpcoming(7);
-                const combined = [...overdue, ...reminders, ...upcoming];
-                window.reminderCount = Array.from(new Map(combined.map(f => [f.id, f])).values()).length;
-                window.reminderCountFetched = true;
-                renderStatusStats();
-                renderStatusTabs();
-            }
         }
 
         // Render followups for Reminders tab
