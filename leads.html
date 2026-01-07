@@ -65,8 +65,8 @@
                     <select id="status-filter" class="form-select" onchange="handleFilter()">
                         <option value="all">All Status</option>
                         <option value="New">New</option>
-                        <option value="Follow Up">Follow Up</option>
                         <option value="Contacted">Contacted</option>
+                        <option value="Follow Up">Follow Up</option>
                         <option value="Interested">Interested</option>
                         <option value="Qualified">Qualified</option>
                         <option value="Converted">Converted</option>
@@ -157,8 +157,8 @@
                             <label class="form-label">Status</label>
                             <select id="lead-status" class="form-select">
                                 <option value="New">New</option>
-                                <option value="Follow Up">Follow Up</option>
                                 <option value="Contacted">Contacted</option>
+                                <option value="Follow Up">Follow Up</option>
                                 <option value="Interested">Interested</option>
                                 <option value="Qualified">Qualified</option>
                                 <option value="Converted">Converted</option>
@@ -171,6 +171,27 @@
                         <label class="form-label">Notes</label>
                         <textarea id="lead-notes" class="form-textarea"
                             placeholder="Add any notes about this lead..."></textarea>
+                    </div>
+
+                    <div style="margin: 20px 0; border-top: 1px dashed var(--border-color);"></div>
+                    <div class="form-group">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                            <span>🔔</span> Quick Reminder
+                        </label>
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label"
+                                    style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Date</label>
+                                <input type="date" id="reminder-date" class="form-input">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label"
+                                    style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Time</label>
+                                <input type="time" id="reminder-time" class="form-input">
+                            </div>
+                        </div>
+                        <input type="text" id="reminder-desc" class="form-input" placeholder="Reminder description..."
+                            style="margin-top: 8px;">
                     </div>
                 </form>
             </div>
@@ -398,6 +419,9 @@
             document.getElementById('modal-title').textContent = 'Add New Lead';
             document.getElementById('lead-form').reset();
             document.getElementById('lead-id').value = '';
+            document.getElementById('reminder-date').value = '';
+            document.getElementById('reminder-time').value = '';
+            document.getElementById('reminder-desc').value = '';
             App.openModal('lead-modal');
         }
 
@@ -418,6 +442,11 @@
             document.getElementById('lead-source').value = lead.source || '';
             document.getElementById('lead-status').value = lead.status || 'New';
             document.getElementById('lead-notes').value = lead.notes || '';
+
+            // Clear reminder fields on edit (they are separate from lead data)
+            document.getElementById('reminder-date').value = '';
+            document.getElementById('reminder-time').value = '';
+            document.getElementById('reminder-desc').value = '';
 
             App.openModal('lead-modal');
         }
@@ -464,6 +493,24 @@
             }
 
             App.showToast(id ? 'Lead updated successfully!' : 'Lead added successfully!', 'success');
+
+            // Handle Quick Reminder
+            const remDate = document.getElementById('reminder-date').value;
+            if (remDate) {
+                const leadId = id || result.data.id;
+                const remTime = document.getElementById('reminder-time').value;
+                const remDesc = document.getElementById('reminder-desc').value.trim();
+
+                await FollowupsModule.add({
+                    lead_id: leadId,
+                    followup_date: remDate,
+                    followup_time: remTime || null,
+                    description: remDesc || 'Quick reminder',
+                    priority: 'Medium'
+                });
+                App.showToast('Reminder set!', 'success');
+            }
+
             closeLeadModal();
             await loadLeads();
         }

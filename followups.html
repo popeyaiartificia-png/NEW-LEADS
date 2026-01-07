@@ -456,12 +456,13 @@
         // Status configuration with emojis
         const statusConfig = [
             { value: 'New', emoji: '🆕', color: '#3b82f6' },
-            { value: 'Follow Up', emoji: '📅', color: '#f59e0b' },
             { value: 'Contacted', emoji: '📞', color: '#8b5cf6' },
+            { value: 'Follow Up', emoji: '📅', color: '#f59e0b' },
             { value: 'Interested', emoji: '🔥', color: '#ef4444' },
             { value: 'Qualified', emoji: '⭐', color: '#10b981' },
             { value: 'Converted', emoji: '🎉', color: '#22c55e' },
-            { value: 'Lost', emoji: '❌', color: '#6b7280' }
+            { value: 'Lost', emoji: '❌', color: '#6b7280' },
+            { value: 'Reminders', emoji: '🔔', color: '#f43f5e' }
         ];
 
         // State
@@ -474,6 +475,13 @@
 
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', async () => {
+            // Check for status parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const statusParam = urlParams.get('status');
+            if (statusParam) {
+                currentStatus = statusParam;
+            }
+
             await loadLeads();
             renderCalendar('calendar-from', calendarFromMonth, 'from');
             renderCalendar('calendar-to', calendarToMonth, 'to');
@@ -660,7 +668,7 @@
                 <div class="status-stat-card ${currentStatus === s.value ? 'active' : ''}" 
                      onclick="selectStatus('${s.value}')">
                     <div class="stat-emoji">${s.emoji}</div>
-                    <div class="stat-count">${counts[s.value] || 0}</div>
+                    <div class="stat-count">${s.value === 'Reminders' ? (window.reminderCount || 0) : (counts[s.value] || 0)}</div>
                     <div class="stat-name">${s.value}</div>
                 </div>
             `).join('');
@@ -683,7 +691,7 @@
                 <button class="status-tab ${currentStatus === s.value ? 'active' : ''}" 
                         onclick="selectStatus('${s.value}')">
                     ${s.emoji} ${s.value}
-                    <span class="count">${counts[s.value] || 0}</span>
+                    <span class="count">${s.value === 'Reminders' ? (window.reminderCount || 0) : (counts[s.value] || 0)}</span>
                 </button>
             `).join('');
 
@@ -709,10 +717,25 @@
         }
 
         // Handle filtering
-        function handleFilter() {
+        async function handleFilter() {
             let filtered = [...allLeads];
 
             // Filter by status
+            if (currentStatus === 'Reminders') {
+                const { data: reminders } = await FollowupsModule.getTodaysReminders();
+                const { data: overdue } = await FollowupsModule.getOverdue();
+                const { data: upcoming } = await FollowupsModule.getUpcoming(7);
+
+                // Combine all pending/relevant followups
+                const combined = [...overdue, ...reminders, ...upcoming];
+                // Remove duplicates if any (by id)
+                const unique = Array.from(new Map(combined.map(f => [f.id, f])).values());
+
+                window.reminderCount = unique.length;
+                renderFollowupTable(unique);
+                return;
+            }
+
             if (currentStatus !== 'all') {
                 filtered = filtered.filter(lead => lead.status === currentStatus);
             }
@@ -733,6 +756,76 @@
             }
 
             renderLeadsTable(filtered);
+
+            // Update counts for Reminders tab if not already fetched
+            if (!window.reminderCountFetched) {
+                const { data: reminders } = await FollowupsModule.getTodaysReminders();
+                const { data: overdue } = await FollowupsModule.getOverdue();
+                const { data: upcoming } = await FollowupsModule.getUpcoming(7);
+                const combined = [...overdue, ...reminders, ...upcoming];
+                window.reminderCount = Array.from(new Map(combined.map(f => [f.id, f])).values()).length;
+                window.reminderCountFetched = true;
+                renderStatusStats();
+                renderStatusTabs();
+            }
+        }
+
+        // Render followups for Reminders tab
+        function renderFollowupTable(followups) {
+            const tbody = document.getElementById('leads-table-body');
+
+            if (!followups || followups.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-icon">🔔</div>
+                            <p>No active reminders found</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = followups.map(f => {
+                const lead = f.leads || {};
+                const priority = (f.priority || 'Medium').toLowerCase();
+                const relativeTime = App.getRelativeTime(f.followup_date);
+
+                return `
+                <tr>
+                    <td>
+                        <div>${App.formatDate(f.followup_date)}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;">${relativeTime}</div>
+                    </td>
+                    <td><strong>${lead.name || '-'}</strong></td>
+                    <td>
+                        <div>${lead.phone || '-'}</div>
+                    </td>
+                    <td>${lead.source || '-'}</td>
+                    <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${f.description || '-'}
+                    </td>
+                    <td>
+                        <span class="badge badge-${priority}">${f.priority || 'Medium'}</span>
+                    </td>
+                    <td>
+                        <div class="flex gap-sm">
+                            <button class="btn btn-secondary btn-icon" onclick="markComplete('${f.id}')" title="Mark Complete">✓</button>
+                            <button class="btn btn-secondary btn-icon" onclick="editLead('${lead.id}')" title="Edit Lead">✎</button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        async function markComplete(id) {
+            const { error } = await FollowupsModule.markComplete(id);
+            if (error) {
+                App.showToast('Failed to complete', 'error');
+                return;
+            }
+            App.showToast('Reminder completed!', 'success');
+            await loadLeads();
         }
 
         // Render leads table

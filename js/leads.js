@@ -140,6 +140,7 @@ const LeadsModule = {
             total: data.length,
             new: 0,
             contacted: 0,
+            'follow up': 0,
             interested: 0,
             qualified: 0,
             converted: 0,

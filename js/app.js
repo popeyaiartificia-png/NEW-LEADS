@@ -206,7 +206,7 @@ const App = {
     leadSources: ['Facebook', 'Instagram', 'WhatsApp', 'Website', 'Referral', 'Walk-in', 'Phone Call', 'Other'],
 
     // Lead status options
-    leadStatuses: ['New', 'Follow Up', 'Contacted', 'Interested', 'Qualified', 'Converted', 'Lost'],
+    leadStatuses: ['New', 'Contacted', 'Follow Up', 'Interested', 'Qualified', 'Converted', 'Lost'],
 
     // Priority options
     priorities: ['High', 'Medium', 'Low'],
