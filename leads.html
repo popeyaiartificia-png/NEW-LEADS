@@ -352,7 +352,7 @@
                         <div class="flex gap-sm">
                             <button class="btn btn-secondary btn-icon" onclick="openNotesModal('${lead.id}', '${lead.name?.replace(/'/g, "\\'") || ''}')" title="Notes">📝</button>
                             <button class="btn btn-secondary btn-icon" onclick="openEditLeadModal('${lead.id}')" title="Edit">✎</button>
-                            <button class="btn btn-secondary btn-icon" onclick="openScheduleFollowup('${lead.id}', '${lead.name}')" title="Schedule Follow-up">📅</button>
+                            <button class="btn btn-secondary btn-icon" onclick="openScheduleFollowup('${lead.id}', '${lead.name?.replace(/'/g, "\\'") || ''}')" title="Schedule Follow-up">📅</button>
                             <button class="btn btn-danger btn-icon" onclick="deleteLead('${lead.id}')" title="Delete">🗑</button>
                         </div>
                     </td>
