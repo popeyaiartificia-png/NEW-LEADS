@@ -304,8 +304,8 @@
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', async () => {
             await loadLeads();
-            App.setupModalClose('lead-modal');
-            App.setupModalClose('followup-modal');
+            // Note: Removed App.setupModalClose for lead-modal and followup-modal
+            // so that clicking outside the modal doesn't close it accidentally
 
             // Check for edit parameter in URL (from Pipeline page)
             const urlParams = new URLSearchParams(window.location.search);
@@ -649,7 +649,7 @@
             renderNotesHistory(notesData);
 
             App.openModal('notes-modal');
-            App.setupModalClose('notes-modal');
+            // Note: Not setting up modal close on outside click to prevent accidental closure
         }
 
         // Render notes history
