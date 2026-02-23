@@ -469,6 +469,9 @@
 
         // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', async () => {
+            // First wait for global App to initialize so stages are populated
+            await window.App.init();
+
             // Load dynamic status config
             if (window.App && window.App.leadStages && window.App.leadStages.length > 0) {
                 statusConfig = window.App.leadStages.map(stage => ({
