@@ -49,9 +49,14 @@
                     <h1 class="page-title">Dashboard</h1>
                     <p id="current-date" class="current-date"></p>
                 </div>
-                <button class="btn btn-primary" onclick="window.location.href='leads.html?return=index.html'">
-                    <span>+</span> Add Lead
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="openStagesModal()">
+                        ⚙️ Pipeline Stages
+                    </button>
+                    <button class="btn btn-primary" onclick="window.location.href='leads.html?return=index.html'">
+                        <span>+</span> Add Lead
+                    </button>
+                </div>
             </div>
 
             <!-- Stats Grid -->
@@ -124,12 +129,45 @@
         </main>
     </div>
 
+    <!-- Pipeline Stages Modal -->
+    <div id="stages-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Manage Pipeline Stages</h3>
+                <button class="modal-close" onclick="closeStagesModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row mb-lg">
+                    <div class="form-group" style="flex: 2;">
+                        <input type="text" id="new-stage-name" class="form-input" placeholder="New stage name" />
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <input type="color" id="new-stage-color" class="form-input" style="height: 42px; padding: 2px;"
+                            value="#3b82f6" title="Stage Color" />
+                    </div>
+                    <div class="form-group" style="flex: 0 0 auto; display: flex; align-items: flex-end;">
+                        <button class="btn btn-primary" style="height: 42px;" onclick="addPipelineStage()">Add</button>
+                    </div>
+                </div>
+
+                <h4
+                    style="margin-bottom: 15px; color: var(--text-secondary); font-size: 14px; text-transform: uppercase;">
+                    Current Stages</h4>
+
+                <div id="stages-list">
+                    <div class="text-center text-muted">Loading stages...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase.js"></script>
+    <script src="js/stages.js"></script>
     <script src="js/leads.js"></script>
     <script src="js/followups.js"></script>
     <script src="js/app.js"></script>
@@ -253,7 +291,140 @@
             App.showToast('Follow-up marked as complete!', 'success');
             await loadDashboardData();
         }
+
+        // ===== STAGES LOGIC =====
+
+        async function openStagesModal() {
+            App.openModal('stages-modal');
+            await renderStagesList();
+        }
+
+        function closeStagesModal() {
+            App.closeModal('stages-modal');
+        }
+
+        async function renderStagesList() {
+            const listEl = document.getElementById('stages-list');
+            listEl.innerHTML = '<div class="text-center text-muted">Loading stages...</div>';
+
+            const { data: stages, error } = await StagesModule.fetchAll();
+
+            if (error) {
+                listEl.innerHTML = '<div class="text-center" style="color: var(--priority-high);">Failed to load stages</div>';
+                return;
+            }
+
+            if (!stages || stages.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-muted">No stages found. Add one above.</div>';
+                return;
+            }
+
+            listEl.innerHTML = stages.map((stage, index) => `
+                <div class="stage-item" style="display: flex; align-items: center; padding: 10px; background: var(--bg-primary); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border-color);">
+                    <div style="flex: 0 0 30px; cursor: move; color: var(--text-muted); text-align: center;">↕️</div>
+                    <div style="flex: 0 0 30px; color: ${stage.color}; font-size: 1.2rem;">${stage.emoji || '📌'}</div>
+                    <div style="flex: 1; font-weight: 500;">
+                        <span class="badge" style="background-color: ${stage.color}20; color: ${stage.color}; border: 1px solid ${stage.color}30;">${stage.name}</span>
+                    </div>
+                    <div style="flex: 0 0 auto; display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-icon" style="padding: 4px 8px; font-size: 12px;" onclick="moveStage(${index}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                        <button class="btn btn-secondary btn-icon" style="padding: 4px 8px; font-size: 12px;" onclick="moveStage(${index}, 1)" ${index === stages.length - 1 ? 'disabled' : ''}>↓</button>
+                        <button class="btn btn-secondary btn-icon" style="color: var(--priority-high);" onclick="deleteStage('${stage.id}')" title="Delete Stage">✕</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function addPipelineStage() {
+            const nameInput = document.getElementById('new-stage-name');
+            const colorInput = document.getElementById('new-stage-color');
+            const name = nameInput.value.trim();
+            const color = colorInput.value;
+
+            if (!name) {
+                App.showToast('Stage name is required', 'warning');
+                return;
+            }
+
+            const button = event.currentTarget;
+            button.disabled = true;
+            button.textContent = '...';
+
+            // Get current highest order
+            const { data: stages } = await window.StagesModule.fetchAll();
+            const maxOrder = stages && stages.length > 0 ? stages[stages.length - 1].list_order : 0;
+
+            const { error } = await window.StagesModule.add({
+                name: name,
+                color: color,
+                emoji: '📌', // Default emoji 
+                list_order: maxOrder + 1
+            });
+
+            button.disabled = false;
+            button.textContent = 'Add';
+
+            if (error) {
+                App.showToast('Error adding stage', 'error');
+                return;
+            }
+
+            nameInput.value = '';
+            App.showToast('Stage added successfully', 'success');
+
+            // Refresh apps stages cache and list
+            window.App.init(); // Soft re-init to pull stages into app cache
+            await renderStagesList();
+        }
+
+        async function deleteStage(stageId) {
+            if (!confirm('Are you sure you want to delete this stage? This feature is destructive and may detach leads from their current pipeline stage.')) {
+                return;
+            }
+
+            const { error } = await window.StagesModule.delete(stageId);
+
+            if (error) {
+                App.showToast('Failed to delete stage', 'error');
+                return;
+            }
+
+            App.showToast('Stage deleted', 'success');
+            window.App.init(); // Refresh global app cache
+            await renderStagesList();
+        }
+
+        async function moveStage(currentIndex, direction) {
+            const { data: stages } = await window.StagesModule.fetchAll();
+            if (!stages || stages.length === 0) return;
+
+            const newIndex = currentIndex + direction;
+            if (newIndex < 0 || newIndex >= stages.length) return;
+
+            // Swap list_order logic isn't strictly necessary with the array since we can re-map it entirely
+            // Let's swap elements in array, then re-save all orders 
+            const stageToMove = stages[currentIndex];
+            stages.splice(currentIndex, 1);
+            stages.splice(newIndex, 0, stageToMove);
+
+            const orderedIds = stages.map(s => s.id);
+
+            const btn = event.currentTarget;
+            const originalText = btn.textContent;
+            btn.textContent = '...';
+            btn.disabled = true;
+
+            const { error } = await window.StagesModule.reorder(orderedIds);
+
+            if (error) {
+                App.showToast('Failed to reorder', 'error');
+            } else {
+                window.App.init(); // Refresh global app cache
+                await renderStagesList();
+            }
+        }
     </script>
 </body>
 
 </html>
+```

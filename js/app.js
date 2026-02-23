@@ -139,8 +139,29 @@ const App = {
 
     // Generate badge HTML for status
     getStatusBadge(status) {
-        const s = (status || 'New').toLowerCase();
-        return `<span class="badge badge-${s}">${status || 'New'}</span>`;
+        const sName = status || 'New';
+        let color = '#3b82f6'; // default primary color
+
+        if (this.leadStages && this.leadStages.length > 0) {
+            const stage = this.leadStages.find(stage => stage.name.toLowerCase() === sName.toLowerCase());
+            if (stage && stage.color) {
+                color = stage.color;
+            }
+        } else {
+            // Fallback colors for basic stages
+            const colors = {
+                new: '#3b82f6',
+                contacted: '#8b5cf6',
+                'follow up': '#f59e0b',
+                interested: '#ec4899',
+                qualified: '#10b981',
+                converted: '#059669',
+                lost: '#ef4444'
+            };
+            color = colors[sName.toLowerCase()] || color;
+        }
+
+        return `<span class="badge" style="background-color: ${color}20; color: ${color}; border: 1px solid ${color}30;">${sName}</span>`;
     },
 
     // Debounce function for search
@@ -166,6 +187,20 @@ const App = {
         }
 
         window.SupabaseConfig.init();
+
+        // Load dynamic stages if StagesModule is available
+        if (window.StagesModule) {
+            try {
+                const { data } = await window.StagesModule.fetchAll();
+                if (data && data.length > 0) {
+                    this.leadStages = data;
+                    this.leadStatuses = data.map(s => s.name);
+                }
+            } catch (err) {
+                console.error('Error loading stages:', err);
+            }
+        }
+
         return true;
     },
 
@@ -205,8 +240,11 @@ const App = {
     // Lead sources options
     leadSources: ['Facebook', 'Instagram', 'WhatsApp', 'Website', 'Referral', 'Walk-in', 'Phone Call', 'Other'],
 
-    // Lead status options
+    // Lead status options (will be overwritten by init() if stages exist)
     leadStatuses: ['New', 'Contacted', 'Follow Up', 'Interested', 'Qualified', 'Converted', 'Lost'],
+
+    // Will hold full stage objects once initialized
+    leadStages: [],
 
     // Priority options
     priorities: ['High', 'Medium', 'Low'],

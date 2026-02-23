@@ -137,20 +137,22 @@ const LeadsModule = {
         if (error) return { data: {}, error };
 
         const counts = {
-            total: data.length,
-            new: 0,
-            contacted: 0,
-            'follow up': 0,
-            interested: 0,
-            qualified: 0,
-            converted: 0,
-            lost: 0
+            total: data.length
         };
+
+        // Initialize counts based on current dynamic statuses in App
+        if (window.App && window.App.leadStatuses) {
+            window.App.leadStatuses.forEach(status => {
+                counts[status.toLowerCase()] = 0;
+            });
+        }
 
         data.forEach(lead => {
             const status = (lead.status || 'new').toLowerCase();
-            if (counts.hasOwnProperty(status)) {
+            if (counts[status] !== undefined) {
                 counts[status]++;
+            } else {
+                counts[status] = 1;
             }
         });
 
