@@ -1,0 +1,137 @@
+{
+    "name": "Sync WhatsApp/IG Leads to Leads Artificia",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "leads-artificia-incoming",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "id": "e6a12b32-15f5-4c01-add5-e116ad1feef6",
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                200,
+                300
+            ],
+            "webhookId": "custom-leads-webhook-id"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "1",
+                            "name": "name",
+                            "value": "={{ $json.body.name }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2",
+                            "name": "phone",
+                            "value": "={{ $json.body.phone }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3",
+                            "name": "email",
+                            "value": "={{ $json.body.email || '' }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "4",
+                            "name": "source",
+                            "value": "={{ $json.body.source || 'WhatsApp' }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "5",
+                            "name": "status",
+                            "value": "New",
+                            "type": "string"
+                        },
+                        {
+                            "id": "6",
+                            "name": "notes",
+                            "value": "={{ $json.body.message || '' }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "1b0def93-79cd-4ebb-b4d4-20b328a6f693",
+            "name": "Map Lead Data",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                420,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "insert",
+                "tableDefinition": {
+                    "__rl": true,
+                    "value": "leads",
+                    "mode": "list",
+                    "cachedResultName": "leads"
+                },
+                "columns": "name, phone, email, source, status, notes"
+            },
+            "id": "691764df-e8ed-4b53-aeeb-c0fb127bcfb9",
+            "name": "Insert Lead finding into Supabase",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                640,
+                300
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "YOUR_SUPABASE_CREDENTIAL_ID",
+                    "name": "Supabase account"
+                }
+            }
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Map Lead Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Map Lead Data": {
+            "main": [
+                [
+                    {
+                        "node": "Insert Lead finding into Supabase",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "f295b7ff-1051-4f01-9dc5-dcc2fa19e358",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "5ed587394c8b8af2e80718617d591bd99cf3cc8ba46816db73fd503ebedbe961"
+    },
+    "id": "11L4u4Z2m918Yf20",
+    "tags": []
+}
